@@ -1,0 +1,20 @@
+version: "3"
+services:
+  #Multi-streaming Service
+  multistreaming_server:
+    build: .
+    container_name: multistreaming_server
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "1935:1935"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/usr/local/nginx/conf/nginx.conf
+      - ./public/:/usr/local/nginx/html/
+    networks:
+      - multistreaming
+
+networks:
+  multistreaming:

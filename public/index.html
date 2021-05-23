@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Multi-streaming</title>
+        <link rel="shortcut icon" type="image/png" href="favicon.png"/>
+        <style>
+            body {
+                background-image: url("background.jpg");
+                background-size: 100%;
+                color: green;
+            }
+            table,th,td {
+                border : 1px solid yellow;
+                border-collapse: collapse;
+            }
+            th,td {
+                padding: 5px;
+            }
+        </style>
+        <script type="text/javascript" src="loader.js"></script>
+        <script type="text/javascript">
+            let bandwidthHistogram = [];
+            let bytesHistogram = [];
+            window.onload = function() { setInterval( loadXMLDoc, 1000); }
+            function loadXMLDoc() {
+                let xmlhttp = new XMLHttpRequest();
+                xmlhttp.onreadystatechange = function() {
+                    if (this.readyState === 4 && this.status === 200) {
+                        updateStatusTable(this);
+                        drawBandwidthChart(this);
+                        drawBytesChart();
+                    }
+                };
+                xmlhttp.open("GET", "stat.xls", true);
+                xmlhttp.send();
+            }
+            function updateStatusTable(xml) {
+                let i;
+                let xmlDoc = xml.responseXML;
+                if (bandwidthHistogram.length === 60) {
+                    bandwidthHistogram.shift();
+                }
+                bandwidthHistogram.push([
+                    xmlDoc.getElementsByTagName("uptime")[0].childNodes[0].nodeValue.toString().substr(-2),
+                    parseInt(xmlDoc.getElementsByTagName("bw_in")[0].childNodes[0].nodeValue),
+                    parseInt(xmlDoc.getElementsByTagName("bw_out")[0].childNodes[0].nodeValue)
+                ])
+                if (bytesHistogram.length === 60) {
+                    bytesHistogram.shift();
+                }
+                bytesHistogram.push([
+                    xmlDoc.getElementsByTagName("uptime")[0].childNodes[0].nodeValue.toString().substr(-2),
+                    parseInt(xmlDoc.getElementsByTagName("bytes_in")[0].childNodes[0].nodeValue),
+                    parseInt(xmlDoc.getElementsByTagName("bytes_out")[0].childNodes[0].nodeValue)
+                ])
+                let table="<tr><th colspan='4'>Process info</th></tr>" +
+                    "<tr><th>Process Identifier</th><td>" + xmlDoc.getElementsByTagName("pid")[0].childNodes[0].nodeValue +
+                    "</td><th>Uptime in seconds</th><td>" + xmlDoc.getElementsByTagName("uptime")[0].childNodes[0].nodeValue + "</td></tr>" +
+                    "<tr><th>N accepted</th><td colspan='3'>" + xmlDoc.getElementsByTagName("naccepted")[0].childNodes[0].nodeValue + "</td></tr>" +
+                    "<tr><th>Bandwidth In</th><td>" + xmlDoc.getElementsByTagName("bw_in")[0].childNodes[0].nodeValue +
+                    "</td><th>Bandwidth Out</th><td>" + xmlDoc.getElementsByTagName("bw_out")[0].childNodes[0].nodeValue + "</td></tr>" +
+                    "<tr><th>Bytes in</th><td>" + xmlDoc.getElementsByTagName("bytes_in")[0].childNodes[0].nodeValue +
+                    "</td><th>Bytes Out</th><td>" + xmlDoc.getElementsByTagName("bytes_out")[0].childNodes[0].nodeValue + "</td></tr>" +"<tr><th colspan='4'>System info</th></tr>" +
+                    "<tr><th>Compiler</th><td colspan='3'>" + xmlDoc.getElementsByTagName("compiler")[0].childNodes[0].nodeValue + "</td></tr>" +
+                    "<tr><th>Built</th><td colspan='3'>" + xmlDoc.getElementsByTagName("built")[0].childNodes[0].nodeValue + "</td></tr>" +
+                    "<tr><th>Nginx Version</th><td>" + xmlDoc.getElementsByTagName("nginx_version")[0].childNodes[0].nodeValue +
+                    "</td><th>Nginx RTMP Version</th><td>" + xmlDoc.getElementsByTagName("nginx_rtmp_version")[0].childNodes[0].nodeValue + "</td></tr>"
+                ;
+                let x = xmlDoc.getElementsByTagName("server")[0].getElementsByTagName("application");
+                for (i = 0; i <x.length; i++) {
+                    table += "<tr><th colspan='3'>" +
+                        x[i].getElementsByTagName("name")[0].childNodes[0].nodeValue +
+                        "</th><td>" +
+                        x[i].getElementsByTagName("live")[0].getElementsByTagName("nclients")[0].childNodes[0].nodeValue +
+                        "</td></tr>";
+                }
+                document.getElementById("stats").innerHTML = table;
+            }
+
+            google.charts.load('current', {'packages':['corechart']});
+            google.charts.setOnLoadCallback(drawBandwidthChart);
+            google.charts.setOnLoadCallback(drawBytesChart);
+
+            function drawBandwidthChart() {
+                let data = google.visualization.arrayToDataTable([
+                    ['Time', 'Inbound', 'Outbound']
+                ].concat(bandwidthHistogram));
+                let options = {
+                    title: 'Bandwidth (in Bytes)',
+                    curveType: 'function',
+                    legend: { position: 'bottom' }
+                };
+
+                let chart = new google.visualization.LineChart(document.getElementById('bandwidth'));
+                chart.draw(data, options);
+            }
+
+            function drawBytesChart() {
+                let data = google.visualization.arrayToDataTable([
+                    ['Time', 'Inbound', 'Outbound']
+                ].concat(bytesHistogram));
+                let options = {
+                    title: 'Bytes',
+                    curveType: 'function',
+                    legend: { position: 'bottom' }
+                };
+
+                let chart = new google.visualization.LineChart(document.getElementById('bytes'));
+                chart.draw(data, options);
+            }
+        </script>
+    </head>
+    <body>
+    <h1 align="center">Live game streaming for multiple platforms with different bit-rates</h1>
+
+    <div style="width: 100%; display: table;">
+        <div style="width: 100%; overflow: hidden;">
+            <div style="float: left">
+                <div id="bandwidth" style="float: top"></div>
+                <br/>
+                <div id="bytes" style="float: bottom"></div>
+            </div>
+            <div>
+                <table id="stats" style="float: right"></table>
+            </div>
+        </div>
+    </div>
+    <footer style="float: inside"><p align="center">&copy Aruna Priyankara Wijewardana @ 2021</p></footer>
+    </body>
+</html>
